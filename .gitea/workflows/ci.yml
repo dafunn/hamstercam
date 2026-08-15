@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake g++
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAMSTERCAM_WERROR=ON
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake g++
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DHAMSTERCAM_WERROR=ON -DHAMSTERCAM_SANITIZE=ON
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  cross-aarch64:
+    runs-on: ubuntu-latest
+    # Debian 11 userland (glibc 2.31, matching the deployment target) with
+    # Node already present, which actions/checkout needs to run at all.
+    container: node:20-bullseye
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq git ca-certificates g++-aarch64-linux-gnu python3-pip
+          pip3 install --quiet cmake
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64-linux-gnu.cmake
+          -DHAMSTERCAM_BUILD_TESTS=OFF
+          -DHAMSTERCAM_WERROR=ON
+      - name: Build
+        run: cmake --build build -j"$(nproc)"

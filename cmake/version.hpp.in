@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+namespace hamstercam {
+
+inline constexpr const char* kVersion = "@PROJECT_VERSION@";
+inline constexpr const char* kGitSha = "@HAMSTERCAM_GIT_SHA@";
+
+}  // namespace hamstercam

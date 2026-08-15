@@ -16,7 +16,7 @@ from it, and hamstercamd reads those frames to monitor the hamster enclosure.
 The state machine, backoff, frame-interval histogram, metric accounting and
 V4L2 backend are implemented, and unit tested against a scriptable fake so
 the suite needs no camera. The daemon entry point, metrics endpoint and
-logging are not written yet. Detection is work in progress.
+logging are implemented too. Detection is work in progress.
 
 ## Build
 

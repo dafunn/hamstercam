@@ -58,7 +58,21 @@ FormatResult V4L2CaptureDevice::query_format(StreamFormat& out) {
     out.width = fmt.fmt.pix.width;
     out.height = fmt.fmt.pix.height;
     out.pixel_format_fourcc = fmt.fmt.pix.pixelformat;
+    out.size_image = fmt.fmt.pix.sizeimage;
+    out.bytesperline = fmt.fmt.pix.bytesperline;
+    out.compressed = query_compressed(out.pixel_format_fourcc);
     return FormatResult::Known;
+}
+
+bool V4L2CaptureDevice::query_compressed(std::uint32_t fourcc) const {
+    v4l2_fmtdesc desc{};
+    desc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+    for (desc.index = 0;; ++desc.index) {
+        if (xioctl(fd_, VIDIOC_ENUM_FMT, &desc) == -1) break;
+        if (desc.pixelformat == fourcc) return (desc.flags & V4L2_FMT_FLAG_COMPRESSED) != 0;
+    }
+    return true;
 }
 
 StreamStartResult V4L2CaptureDevice::start_streaming(std::uint32_t buffer_count) {

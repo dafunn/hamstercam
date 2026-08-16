@@ -49,9 +49,10 @@ void interruptible_sleep(std::chrono::milliseconds total) {
 }
 
 const std::set<std::string>& known_flags() {
-    static const std::set<std::string> flags = {"--device", "--metrics-addr", "--expected-fps",
-                                                  "--stall-multiple", "--buffer-count",
-                                                  "--reconnect-max-backoff", "--log-level"};
+    static const std::set<std::string> flags = {
+        "--device",         "--metrics-addr",   "--expected-fps",
+        "--stall-multiple", "--buffer-count",   "--reconnect-max-backoff",
+        "--awaiting-producer-max-backoff",      "--log-level"};
     return flags;
 }
 
@@ -138,7 +139,10 @@ int main(int argc, char** argv) {
         !parse_u32(resolve(flags, "--stall-multiple", "HAMSTERCAM_STALL_MULTIPLE", "10"), config.stall_multiple) ||
         !parse_u32(resolve(flags, "--buffer-count", "HAMSTERCAM_BUFFER_COUNT", "4"), config.buffer_count) ||
         !parse_duration_ms(resolve(flags, "--reconnect-max-backoff", "HAMSTERCAM_RECONNECT_MAX_BACKOFF", "30s"),
-                            config.reconnect_max_backoff)) {
+                            config.reconnect_max_backoff) ||
+        !parse_duration_ms(resolve(flags, "--awaiting-producer-max-backoff",
+                                    "HAMSTERCAM_AWAITING_PRODUCER_MAX_BACKOFF", "2s"),
+                            config.awaiting_producer_max_backoff)) {
         std::cerr << "invalid flag value\n";
         return 1;
     }

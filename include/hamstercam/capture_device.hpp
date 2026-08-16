@@ -15,6 +15,19 @@ struct StreamFormat {
     std::uint32_t height = 0;
     std::uint32_t pixel_format_fourcc = 0;  // raw V4L2 four-character code
 
+    // v4l2_pix_format.sizeimage: the buffer size the driver states for this
+    // format. For an uncompressed format this is exact, which is what makes
+    // it usable as a format-change signal; for a compressed format it is an
+    // upper bound, which is why `compressed` gates its use.
+    std::uint32_t size_image = 0;
+    std::uint32_t bytesperline = 0;  // v4l2_pix_format.bytesperline
+
+    // V4L2_FMT_FLAG_COMPRESSED for this fourcc, from VIDIOC_ENUM_FMT. Defaults
+    // true so that a format nothing has actually queried yet is treated the
+    // same as one the driver couldn't classify: assume compressed until told
+    // otherwise, never the reverse.
+    bool compressed = true;
+
     friend bool operator==(const StreamFormat&, const StreamFormat&) = default;
 
     // Decodes pixel_format_fourcc into its 4 printable characters, for the

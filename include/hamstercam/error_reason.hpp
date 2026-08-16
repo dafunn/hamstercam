@@ -17,6 +17,7 @@ enum class ErrorReason : std::size_t {
     Timeout,
     Dequeue,
     DeviceLost,
+    Geometry,
     Count,
 };
 
@@ -34,6 +35,8 @@ constexpr std::string_view to_string(ErrorReason reason) {
             return "dequeue";
         case ErrorReason::DeviceLost:
             return "device_lost";
+        case ErrorReason::Geometry:
+            return "geometry";
         case ErrorReason::Count:
             break;
     }

@@ -24,8 +24,16 @@ public:
 
     // --- test control surface ---
     void set_open_result(OpenResult result) { open_result_ = result; }
+
+    // These set what a producer is *actually* doing right now -- the truth
+    // on the wire. They do not by themselves change what query_format()
+    // returns: the real driver freezes G_FMT at whatever was true when this
+    // reader's fd was opened, for as long as it stays open (only a fresh
+    // open() re-samples these), so open() is what snapshots them into what
+    // query_format() actually reports.
     void set_format_result(FormatResult result) { format_result_ = result; }
     void set_format(const StreamFormat& format) { format_ = format; }
+
     void set_start_result(StreamStartResult result) { start_result_ = result; }
     void set_default_dequeue_result(DequeueResult result) { default_dequeue_result_ = result; }
 
@@ -48,6 +56,14 @@ public:
     OpenResult open() override {
         ++open_call_count_;
         is_open_ = (open_result_ == OpenResult::Opened);
+        if (is_open_) {
+            // A fresh open observes whatever is true on the wire right now
+            // (the transient-probe path); that observation then stays frozen
+            // for as long as this fd is held, regardless of what the
+            // producer does afterward, until the next open().
+            observed_format_result_ = format_result_;
+            observed_format_ = format_;
+        }
         return open_result_;
     }
 
@@ -58,8 +74,8 @@ public:
     }
 
     FormatResult query_format(StreamFormat& out) override {
-        if (format_result_ == FormatResult::Known) out = format_;
-        return format_result_;
+        if (observed_format_result_ == FormatResult::Known) out = observed_format_;
+        return observed_format_result_;
     }
 
     StreamStartResult start_streaming(std::uint32_t buffer_count) override {
@@ -94,6 +110,15 @@ private:
     OpenResult open_result_ = OpenResult::Absent;
     FormatResult format_result_ = FormatResult::NoProducer;
     StreamFormat format_{};
+
+    // What query_format() actually reports -- snapshotted from the above at
+    // open() time, then frozen until the next open(), so a test can express
+    // both a producer vanishing while the daemon holds the fd open (stays
+    // frozen at the old format) and one vanishing before a fresh open (a
+    // clean EINVAL).
+    FormatResult observed_format_result_ = FormatResult::NoProducer;
+    StreamFormat observed_format_{};
+
     StreamStartResult start_result_ = StreamStartResult::Started;
     DequeueResult default_dequeue_result_ = DequeueResult::Timeout;
 

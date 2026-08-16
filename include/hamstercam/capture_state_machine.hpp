@@ -8,6 +8,7 @@
 #include "hamstercam/capture_state.hpp"
 #include "hamstercam/clock.hpp"
 #include "hamstercam/daemon_config.hpp"
+#include "hamstercam/error_reason.hpp"
 #include "hamstercam/event.hpp"
 #include "hamstercam/stats.hpp"
 
@@ -42,16 +43,36 @@ private:
     StepOutcome step_device_absent();
     StepOutcome step_awaiting_producer();
     StepOutcome step_streaming(std::chrono::milliseconds poll_timeout);
-    StepOutcome step_stalled(std::chrono::milliseconds poll_timeout);
+
+    // The post-release poll: entered only via begin_release_cycle(), reported
+    // as awaiting_producer (not a distinct state -- see begin_release_cycle),
+    // but mechanically different from step_awaiting_producer() because the fd
+    // must never be held between attempts here.
+    StepOutcome step_recovering();
 
     // Shared by step_awaiting_producer() (initial configure) and
-    // step_streaming() (post format-change reconfigure).
+    // step_recovering() (post-release reconfigure).
     StepOutcome enter_configuring();
 
     void handle_frame(const FrameDescriptor& frame);
-    StepOutcome maybe_check_format();
-    void enter_stalled();
+
+    // Tracks buffer arrival rate over a rolling window while streaming, and
+    // flags a sustained excursion well above expected_fps -- the signature of
+    // a producer being truncated into the wrong buffer size, which floods the
+    // device with fragments rather than causing frames to stop. Detection
+    // only: never releases the device itself.
+    void check_arrival_rate(std::chrono::steady_clock::time_point now);
+
+    // Releases the device (stop streaming, unmap, close) and moves to
+    // awaiting_producer to wait out a disruption -- either the stall
+    // threshold tripping or a payload size that no longer matches the
+    // negotiated format. Both are the daemon's own attachment pinning a
+    // format nothing is writing correctly anymore, so both recover the same
+    // way: let go and wait for a producer to (re)establish one.
+    void begin_release_cycle(ErrorReason reason);
+
     void lose_device();
+    void reset_backoffs();
 
     ICaptureDevice& device_;
     Clock& clock_;
@@ -60,17 +81,32 @@ private:
     DaemonConfig config_;
 
     CaptureState state_ = CaptureState::DeviceAbsent;
-    Backoff backoff_;
+
+    // Separate instances, not one backoff with a state-dependent ceiling:
+    // device_absent and awaiting_producer have different urgency and must be
+    // able to grow independently of each other.
+    Backoff device_absent_backoff_;
+    Backoff awaiting_producer_backoff_;
 
     std::chrono::steady_clock::time_point next_attempt_at_{};
     std::chrono::steady_clock::time_point last_frame_at_{};
     bool have_last_frame_ = false;
-    std::chrono::steady_clock::time_point last_format_check_at_{};
+
+    // True from begin_release_cycle() until a producer is reacquired or the
+    // device is lost outright. Distinguishes the post-release poll (transient
+    // open/query/close every attempt) from the ordinary pre-stream wait
+    // (fd opened once, held for the duration) even though both report the
+    // same awaiting_producer state value.
+    bool recovering_ = false;
 
     StreamFormat current_format_{};
     bool has_streamed_before_ = false;
 
     std::chrono::milliseconds stall_threshold_{};
+
+    std::chrono::steady_clock::time_point rate_window_start_{};
+    std::uint32_t rate_window_frame_count_ = 0;
+    bool rate_anomaly_active_ = false;
 };
 
 }  // namespace hamstercam

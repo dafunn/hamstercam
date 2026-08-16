@@ -29,6 +29,11 @@ private:
 
     void unmap_buffers() noexcept;
 
+    // Whether the driver's VIDIOC_ENUM_FMT lists `fourcc` with
+    // V4L2_FMT_FLAG_COMPRESSED set. Returns true (fail toward compressed) if
+    // enumeration fails or never lists the fourcc that was just negotiated.
+    bool query_compressed(std::uint32_t fourcc) const;
+
     std::string device_path_;
     int fd_ = -1;
     std::vector<MappedBuffer> buffers_;

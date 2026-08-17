@@ -61,9 +61,13 @@ add_library(hamstercam_core STATIC
     src/capture_device.cpp
     src/capture_state_machine.cpp
     src/metrics.cpp
+    src/metrics_primitives.cpp
     src/json_logger.cpp
     src/http_server.cpp
-    src/process_info.cpp)
+    src/process_info.cpp
+    src/progress_parser.cpp
+    src/progress_socket_server.cpp
+    src/exporter_metrics.cpp)
 add_library(hamstercam::core ALIAS hamstercam_core)
 
 target_include_directories(hamstercam_core PUBLIC
@@ -107,6 +111,16 @@ target_include_directories(hamstercamd PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(hamstercamd PRIVATE hamstercam_core)
 
 # ---------------------------------------------------------------------------
+# hamstercam-exporter
+#
+# Reads ffmpeg's -progress socket and serves it as Prometheus metrics.
+# ---------------------------------------------------------------------------
+add_executable(hamstercam-exporter
+    src/exporter_main.cpp)
+
+target_link_libraries(hamstercam-exporter PRIVATE hamstercam_core)
+
+# ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 if(HAMSTERCAM_BUILD_TESTS OR HAMSTERCAM_BUILD_INTEGRATION_TESTS)
@@ -129,7 +143,9 @@ if(HAMSTERCAM_BUILD_TESTS)
         tests/histogram_test.cpp
         tests/capture_state_machine_test.cpp
         tests/metrics_test.cpp
-        tests/json_logger_test.cpp)
+        tests/json_logger_test.cpp
+        tests/progress_parser_test.cpp
+        tests/exporter_metrics_test.cpp)
 
     target_include_directories(hamstercam_tests PRIVATE tests/support)
     target_link_libraries(hamstercam_tests PRIVATE hamstercam_core GTest::gtest_main)

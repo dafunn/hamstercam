@@ -25,7 +25,7 @@ public:
     // --- test control surface ---
     void set_open_result(OpenResult result) { open_result_ = result; }
 
-    // These set what a producer is *actually* doing right now -- the truth
+    // These set what a producer is doing right now -- the truth
     // on the wire. They do not by themselves change what query_format()
     // returns: the real driver freezes G_FMT at whatever was true when this
     // reader's fd was opened, for as long as it stays open (only a fresh

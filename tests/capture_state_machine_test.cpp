@@ -358,10 +358,10 @@ TEST_F(CaptureStateMachineTest, UncompressedPayloadMismatchMidStreamTriggersRele
     EXPECT_EQ(device.close_call_count(), 0);
     EXPECT_EQ(stats.error_count(ErrorReason::Geometry), 0u);
 
-    // The producer already restarted at a new resolution without frames ever
-    // stopping -- truncation makes the producer write *more* often, not
-    // less, so no stall trips here. bytesused disagreeing with the
-    // negotiated size_image is the only signal available.
+    // The producer restarted at a new resolution without frames ever
+    // stopping -- truncation makes it write more often, not less, so no
+    // stall trips here. bytesused disagreeing with the negotiated
+    // size_image is the only signal available.
     device.queue_frame(FrameDescriptor{0, 460800, {}});  // no longer matches the negotiated size_image
     machine.step(10ms);
 
